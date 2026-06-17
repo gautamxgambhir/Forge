@@ -1,8 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { loader } from "@monaco-editor/react";
+import { useCallback, useEffect } from "react";
 import { FORGE_COMPLETIONS, FORGE_KEYWORDS } from "@/language/forge-runtime";
 
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
@@ -15,6 +14,7 @@ const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
 });
 
 let monacoConfigured = false;
+let monacoNamespace: typeof import("monaco-editor") | null = null;
 
 interface EditorPaneProps {
   fileName: string;
@@ -37,6 +37,8 @@ export const EditorPane = ({
 }: EditorPaneProps) => {
   const handleBeforeMount = useCallback(
     (monaco: typeof import("monaco-editor")) => {
+      // Always store the namespace so setTheme is always available
+      monacoNamespace = monaco;
       if (monacoConfigured) return;
 
       // ── Register FORGE language ───────────────
@@ -273,17 +275,13 @@ export const EditorPane = ({
     [],
   );
 
-  const [editorMounted, setEditorMounted] = useState(false);
   const monacoTheme = resolvedTheme === "light" ? "forge-theme-light" : "forge-theme-dark";
 
   // Monaco ignores the `theme` prop on re-renders after initial mount.
-  // Use the loader to get the monaco instance and switch themes imperatively.
+  // Switch themes imperatively using the stored namespace from beforeMount.
   useEffect(() => {
-    if (!editorMounted) return;
-    loader.init().then((monaco) => {
-      monaco.editor.setTheme(monacoTheme);
-    });
-  }, [monacoTheme, editorMounted]);
+    monacoNamespace?.editor.setTheme(monacoTheme);
+  }, [monacoTheme]);
 
   return (
     <div
@@ -295,7 +293,10 @@ export const EditorPane = ({
         language="forge"
         beforeMount={handleBeforeMount}
         onMount={(editor) => {
-          setEditorMounted(true);
+          // Apply the current theme immediately after mount (handles
+          // the case where theme was restored from localStorage before
+          // the editor was ready).
+          monacoNamespace?.editor.setTheme(monacoTheme);
           onEditorMount?.(editor);
         }}
         theme={monacoTheme}

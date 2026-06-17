@@ -20,19 +20,20 @@ const listeners = new Set<(mode: ThemeMode) => void>();
 export function useTheme() {
   const [mode, setModeState] = useState<ThemeMode>(globalMode);
 
-  // Load from localStorage on mount (once globally)
+  // Sync state with localStorage and setup listener on mount
   useEffect(() => {
     const saved = localStorage.getItem("forge-theme") as ThemeMode | null;
     if (saved === "dark" || saved === "light" || saved === "system") {
       globalMode = saved;
-      listeners.forEach((l) => l(saved));
     }
-  }, []);
+    
+    // Update the component's state to match the current globalMode
+    setModeState(globalMode);
 
-  useEffect(() => {
     const handler = (nextMode: ThemeMode) => {
       setModeState(nextMode);
     };
+    
     listeners.add(handler);
     return () => {
       listeners.delete(handler);
