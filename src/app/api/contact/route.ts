@@ -1,19 +1,19 @@
 import { NextResponse } from "next/server";
-import { SenderKit } from "@senderkit/sdk";
+import { Resend } from "resend";
 
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
-  const apiKey = process.env.SENDERKIT_API_KEY;
+  const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
-      { error: "Server misconfiguration: missing SENDERKIT_API_KEY" },
+      { error: "Server misconfiguration: missing RESEND_API_KEY" },
       { status: 500 },
     );
   }
 
-  // Lazy-init inside the handler so the module loads fine with no env var at build time
-  const senderkit = new SenderKit({ apiKey });
+  // Lazy-init inside the handler so the module loads fine at build time
+  const resend = new Resend(apiKey);
 
   let body: unknown;
   try {
@@ -35,26 +35,46 @@ export async function POST(req: Request) {
     );
   }
 
-  // Basic email format check
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json({ error: "Invalid email address" }, { status: 400 });
   }
 
   try {
-    const result = await senderkit.send({
-      template: "contact",          // template name on SenderKit dashboard
-      to: "ggambhir1919@gmail.com", // your inbox
-      vars: {
-        sender_name:    name.trim(),
-        sender_email:   email.trim(),
-        sender_message: message.trim(),
-      },
+    const { data, error } = await resend.emails.send({
+      from: "FORGE Contact <onboarding@resend.dev>",
+      to:   "ggambhir1919@gmail.com",
+      replyTo: email.trim(),
+      subject: `FORGE — message from ${name.trim()}`,
+      html: `
+        <div style="font-family:monospace;font-size:14px;color:#111;max-width:560px">
+          <p style="margin:0 0 16px;font-size:18px;font-weight:bold">
+            New message via FORGE
+          </p>
+          <table style="border-collapse:collapse;width:100%">
+            <tr>
+              <td style="padding:6px 12px 6px 0;color:#555;white-space:nowrap">Name</td>
+              <td style="padding:6px 0">${name.trim()}</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 12px 6px 0;color:#555;white-space:nowrap">Email</td>
+              <td style="padding:6px 0">
+                <a href="mailto:${email.trim()}" style="color:#111">${email.trim()}</a>
+              </td>
+            </tr>
+          </table>
+          <hr style="border:none;border-top:1px solid #e4e4e4;margin:16px 0"/>
+          <p style="white-space:pre-wrap;margin:0">${message.trim()}</p>
+        </div>
+      `,
     });
 
-    return NextResponse.json({ ok: true, id: result.id }, { status: 200 });
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true, id: data?.id }, { status: 200 });
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Failed to send message";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const msg = err instanceof Error ? err.message : "Failed to send message";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
