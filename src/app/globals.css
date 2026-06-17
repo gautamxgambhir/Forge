@@ -1,26 +1,79 @@
 @import "tailwindcss";
 
+/* ── Dark theme (default) ──────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --forge-bg:      #000000;
+  --forge-surface: #0a0a0a;
+  --forge-surface2:#111111;
+  --forge-fg:      #f0f0f0;
+  --forge-muted:   #888888;
+  --forge-border:  #2a2a2a;
+  --forge-border2: #1a1a1a;
+  --forge-input-bg:#000000;
+  --forge-hover:   rgba(255,255,255,0.06);
+  --forge-select:  #1a1a1a;
+
+  --font-editor: var(--font-jetbrains-mono), monospace;
+  --font-ui:     var(--font-vt323), monospace;
+  --font-pixel:  var(--font-pixelify), monospace;
+}
+
+/* ── Light theme ───────────────────────────── */
+[data-theme="light"] {
+  --forge-bg:      #d9d8d1;
+  --forge-surface: #bebdb6;
+  --forge-surface2:#b4b3ac;
+  --forge-fg:      #111111;
+  --forge-muted:   #555550;
+  --forge-border:  #a8a8a0;
+  --forge-border2: #b8b8b0;
+  --forge-input-bg:#c0bfb8;
+  --forge-hover:   rgba(0,0,0,0.06);
+  --forge-select:  #b0afaa;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--forge-bg);
+  --color-foreground: var(--forge-fg);
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-editor);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--forge-bg);
+  color: var(--forge-fg);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-ui);
+  line-height: 1;
+}
+
+/* Reset button text-decoration — VT323 can cause line-through in some contexts */
+button {
+  text-decoration: none;
+}
+
+/* ── Scrollbars ────────────────────────────── */
+.forge-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--forge-border) var(--forge-bg);
+}
+.forge-scrollbar::-webkit-scrollbar       { width: 10px; height: 10px; }
+.forge-scrollbar::-webkit-scrollbar-track { background: var(--forge-bg); }
+.forge-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--forge-border);
+  border: 1px solid var(--forge-bg);
+}
+.forge-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--forge-muted);
 }
