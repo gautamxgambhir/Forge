@@ -226,7 +226,7 @@ export const ContactModal = ({ open, onClose, onResult }: ContactModalProps) => 
 
           {step === "sending" && (
             <div className="mb-4 py-4 text-center font-[family-name:var(--font-editor)] text-[11px] text-zinc-500">
-              Sending via SenderKit...
+              Sending...
             </div>
           )}
 
