@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { loader } from "@monaco-editor/react";
 import { FORGE_COMPLETIONS, FORGE_KEYWORDS } from "@/language/forge-runtime";
 
@@ -273,15 +273,17 @@ export const EditorPane = ({
     [],
   );
 
+  const [editorMounted, setEditorMounted] = useState(false);
   const monacoTheme = resolvedTheme === "light" ? "forge-theme-light" : "forge-theme-dark";
 
   // Monaco ignores the `theme` prop on re-renders after initial mount.
   // Use the loader to get the monaco instance and switch themes imperatively.
   useEffect(() => {
+    if (!editorMounted) return;
     loader.init().then((monaco) => {
       monaco.editor.setTheme(monacoTheme);
     });
-  }, [monacoTheme]);
+  }, [monacoTheme, editorMounted]);
 
   return (
     <div
@@ -292,7 +294,10 @@ export const EditorPane = ({
         path={fileName}
         language="forge"
         beforeMount={handleBeforeMount}
-        onMount={(editor) => onEditorMount?.(editor)}
+        onMount={(editor) => {
+          setEditorMounted(true);
+          onEditorMount?.(editor);
+        }}
         theme={monacoTheme}
         value={value}
         onChange={(v) => onChange(v ?? "")}

@@ -14,15 +14,29 @@ function resolveTheme(mode: ThemeMode): "dark" | "light" {
   return mode;
 }
 
-export function useTheme() {
-  const [mode, setMode] = useState<ThemeMode>("dark");
+let globalMode: ThemeMode = "dark";
+const listeners = new Set<(mode: ThemeMode) => void>();
 
-  // Load from localStorage on mount
+export function useTheme() {
+  const [mode, setModeState] = useState<ThemeMode>(globalMode);
+
+  // Load from localStorage on mount (once globally)
   useEffect(() => {
     const saved = localStorage.getItem("forge-theme") as ThemeMode | null;
     if (saved === "dark" || saved === "light" || saved === "system") {
-      setMode(saved);
+      globalMode = saved;
+      listeners.forEach((l) => l(saved));
     }
+  }, []);
+
+  useEffect(() => {
+    const handler = (nextMode: ThemeMode) => {
+      setModeState(nextMode);
+    };
+    listeners.add(handler);
+    return () => {
+      listeners.delete(handler);
+    };
   }, []);
 
   // Apply data-theme attribute + listen for system changes
@@ -42,11 +56,13 @@ export function useTheme() {
   }, [mode]);
 
   const setTheme = (next: ThemeMode) => {
-    setMode(next);
+    globalMode = next;
     localStorage.setItem("forge-theme", next);
+    listeners.forEach((l) => l(next));
   };
 
   const resolved = resolveTheme(mode);
 
   return { mode, resolved, setTheme };
 }
+
