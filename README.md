@@ -18,7 +18,7 @@
   ![Status](https://img.shields.io/badge/status-live-brightgreen?style=flat-square)
 
   <br />
-  <a href="https://forgeos.vercel.app"><strong>🔗 Live Demo →</strong></a>
+  <a href="https://forgebygautam.in"><strong>🔗 Live Demo →</strong></a>
   <br /><br />
 
 </div>
