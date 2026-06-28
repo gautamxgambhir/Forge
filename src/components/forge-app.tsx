@@ -9,6 +9,7 @@ import { EditorPane } from "@/components/editor-pane";
 import { EditorEmpty } from "@/components/editor-empty";
 import { TerminalPanel } from "@/components/terminal-panel";
 import { ContactModal } from "@/components/contact-modal";
+import { VisualExplorer } from "@/components/visual-explorer";
 import { useForgeStore } from "@/editor/store";
 import { runSource, handleShellCommand } from "@/language/forge-runtime";
 import type { FileSystemAdapter } from "@/language/forge-runtime";
@@ -31,6 +32,8 @@ export const ForgeApp = () => {
   const files        = useForgeStore((s) => s.files);
   const openTabs     = useForgeStore((s) => s.openTabs);
   const activeFileId = useForgeStore((s) => s.activeFileId);
+  const viewMode     = useForgeStore((s) => s.viewMode);
+  const setViewMode  = useForgeStore((s) => s.setViewMode);
 
   // ── Store: layout ──────────────────────────────────────────────────
   const sidebarSide        = useForgeStore((s) => s.sidebarSide);
@@ -88,6 +91,52 @@ export const ForgeApp = () => {
 
   // ── Monaco ref ─────────────────────────────────────────────────────
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
+
+  // ── Select line in Monaco editor ────────────────────────────────────
+  const handleSelectLine = useCallback((lineNum: number) => {
+    const ed = editorRef.current;
+    if (!ed) return;
+    ed.focus();
+    ed.revealLineInCenter(lineNum);
+    ed.setSelection({
+      startLineNumber: lineNum,
+      startColumn: 1,
+      endLineNumber: lineNum,
+      endColumn: ed.getModel()?.getLineMaxColumn(lineNum) || 1,
+    });
+  }, []);
+
+  // ── Monaco mount with double-click listener ─────────────────────────
+  const handleEditorMount = useCallback((editor: monaco.editor.IStandaloneCodeEditor) => {
+    editorRef.current = editor;
+    
+    // Force layout after mount
+    setTimeout(() => {
+      editor.layout();
+    }, 100);
+    
+    editor.onMouseUp((e) => {
+      if (e.event.detail === 2) {
+        const position = e.target.position;
+        if (position) {
+          const model = editor.getModel();
+          const lineContent = model?.getLineContent(position.lineNumber) || "";
+          const text = lineContent.trim().toLowerCase();
+          
+          const isCommand = 
+            text.startsWith("show ") || 
+            text.startsWith("inspect ") ||
+            text === "discover" ||
+            text === "help" ||
+            text.includes("->");
+          
+          if (isCommand) {
+            setViewMode("visual");
+          }
+        }
+      }
+    });
+  }, [setViewMode]);
 
   // ── FS adapter ─────────────────────────────────────────────────────
   const fsRef = useRef<FileSystemAdapter>({
@@ -211,10 +260,14 @@ export const ForgeApp = () => {
       if (ctrl && e.key === "b")     { e.preventDefault(); handleToggleSidebar(); }
       if (ctrl && e.key === "`")     { e.preventDefault(); handleToggleTerminal(); }
       if (ctrl && e.key === "n")     { e.preventDefault(); createFile(); }
+      if (ctrl && e.shiftKey && e.key.toLowerCase() === "v") {
+        e.preventDefault();
+        setViewMode(viewMode === "code" ? "split" : viewMode === "split" ? "visual" : "code");
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [handleRun, handleToggleSidebar, handleToggleTerminal, createFile]);
+  }, [handleRun, handleToggleSidebar, handleToggleTerminal, createFile, viewMode, setViewMode]);
 
   // ── Responsive overrides ───────────────────────────────────────────
   // Mobile: terminal forced bottom, minimap off, slightly smaller font
@@ -224,6 +277,16 @@ export const ForgeApp = () => {
 
   const terminalVisible = !terminalCollapsed;
   const sidebarVisible  = !sidebarCollapsed;
+
+  // ── Force Monaco layout on viewMode change ──────────────────────────
+  useEffect(() => {
+    if (editorRef.current) {
+      // Delay layout to allow animation to complete
+      setTimeout(() => {
+        editorRef.current?.layout();
+      }, 400);
+    }
+  }, [viewMode]);
 
   // ── Sidebar element ────────────────────────────────────────────────
   const sidebarEl = (
@@ -260,19 +323,58 @@ export const ForgeApp = () => {
           activeFileId={activeFile?.id ?? ""}
           onSelectTab={openFile}
           onCloseTab={closeTab}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
         />
         {openTabs.length === 0 ? (
           <EditorEmpty onNewFile={createFile} />
         ) : (
-          <EditorPane
-            fileName={activeFile?.name ?? "welcome.forge"}
-            value={activeFile?.content ?? ""}
-            minimapEnabled={effectiveMinimap}
-            fontSize={effectiveFontSize}
-            resolvedTheme={resolvedTheme}
-            onChange={(v) => { if (activeFile) updateFileContent(activeFile.id, v); }}
-            onEditorMount={(ed) => { editorRef.current = ed; }}
-          />
+          <div className="relative flex flex-1 min-h-0 min-w-0 bg-[color:var(--forge-bg)]">
+            {/* Left pane: Monaco Editor */}
+            {viewMode !== "visual" && (
+              <motion.div
+                key="editor-pane"
+                layout
+                initial={false}
+                animate={{
+                  width: viewMode === "code" ? "100%" : "50%",
+                }}
+                transition={{ duration: 0.35, ease: "easeInOut" }}
+                className="relative h-full min-h-0 min-w-0 border-r border-[color:var(--forge-border)]"
+              >
+                <EditorPane
+                  fileName={activeFile?.name ?? "welcome.forge"}
+                  value={activeFile?.content ?? ""}
+                  minimapEnabled={effectiveMinimap}
+                  fontSize={effectiveFontSize}
+                  resolvedTheme={resolvedTheme}
+                  onChange={(v) => { if (activeFile) updateFileContent(activeFile.id, v); }}
+                  onEditorMount={handleEditorMount}
+                />
+              </motion.div>
+            )}
+
+            {/* Right pane: Visual Explorer */}
+            {viewMode !== "code" && (
+              <motion.div
+                key="visual-pane"
+                layout
+                initial={false}
+                animate={{
+                  width: viewMode === "visual" ? "100%" : "50%",
+                }}
+                transition={{ duration: 0.35, ease: "easeInOut" }}
+                className="relative h-full min-h-0 min-w-0 overflow-y-auto"
+              >
+                <VisualExplorer
+                  fileName={activeFile?.name ?? "welcome.forge"}
+                  content={activeFile?.content ?? ""}
+                  onSelectLine={handleSelectLine}
+                  onOpenFileByName={openFileByName}
+                />
+              </motion.div>
+            )}
+          </div>
         )}
       </div>
 
@@ -310,6 +412,8 @@ export const ForgeApp = () => {
         sidebarVisible={sidebarVisible}
         terminalVisible={terminalVisible}
         minimapEnabled={minimapOn}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
         isMobile={isMobile}
         onMobileSidebarToggle={() => setShowMobileSidebar((v) => !v)}
         onNewFile={createFile}
@@ -442,6 +546,19 @@ Start exploring:
           </motion.div>
         )}
       </AnimatePresence>
+      {/* Custom Status Bar */}
+      <footer className="h-6 shrink-0 border-t border-[color:var(--forge-border)] bg-[color:var(--forge-surface)] flex items-center justify-between px-3 font-[family-name:var(--font-editor)] text-[10px] text-[color:var(--forge-muted)] select-none">
+        <div className="flex items-center gap-4">
+          <span>FORGE v1.0.0</span>
+          <span className="hidden md:inline text-[color:var(--forge-muted)]">Workspace: {viewMode === "code" ? "Code Editor" : "Visual Explorer"}</span>
+        </div>
+        <div className="flex items-center gap-4">
+          <span>Renderer: {viewMode === "code" ? "Source" : "Visual"}</span>
+          <span className="hidden md:inline">LF</span>
+          <span className="hidden md:inline">UTF-8</span>
+          <span>forge</span>
+        </div>
+      </footer>
     </div>
   );
 };

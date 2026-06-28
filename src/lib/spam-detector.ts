@@ -218,25 +218,37 @@ export async function detectSpam(data: {
 
   // Keyboard Smashing / Gibberish detection
   // Check words > 5 letters for vowel-to-consonant ratios and missing vowels
-  const words = message.match(/\b[a-zA-Z]{6,}\b/g) || [];
+  const allWords = [...(message.match(/\b[a-zA-Z]{3,}\b/g) || []), ...(subject.match(/\b[a-zA-Z]{3,}\b/g) || []), ...(name.match(/\b[a-zA-Z]{3,}\b/g) || [])];
   let gibberishDetected = false;
-  for (const word of words) {
+  let gibberishWords: string[] = [];
+  
+  for (const word of allWords) {
     const wordLower = word.toLowerCase();
     const vowelCount = (wordLower.match(/[aeiouy]/g) || []).length;
     const consonantCount = (wordLower.match(/[bcdfghjklmnpqrstvwxyz]/g) || []).length;
     
+    // Check for no vowels or too many consonants
     if (vowelCount === 0 || consonantCount / wordLower.length > 0.85) {
-      const safeExceptions = ["rhythm", "rhythms", "html5", "github", "docker", "script", "sqlite"];
+      const safeExceptions = ["rhythm", "rhythms", "html5", "github", "docker", "script", "sqlite", "css", "sql", "www", "http", "https", "ssh", "npm", "tsx", "jsx"];
       if (!safeExceptions.includes(wordLower)) {
         gibberishDetected = true;
-        break;
+        gibberishWords.push(word);
+      }
+    }
+    
+    // Check for keyboard mashing patterns (repeating consonants with no vowels)
+    if (wordLower.length >= 4) {
+      const hasConsecutiveRepeats = /([bcdfghjklmnpqrstvwxyz])\1{2,}/.test(wordLower);
+      if (hasConsecutiveRepeats && vowelCount === 0) {
+        gibberishDetected = true;
+        gibberishWords.push(word);
       }
     }
   }
 
   if (gibberishDetected) {
-    score += 20;
-    reasons.push("Gibberish / keyboard smashing pattern");
+    score += 50;
+    reasons.push(`Gibberish detected: ${gibberishWords.slice(0, 3).join(", ")}`);
   }
 
   // 6. Duplicate Detection (Checked against database)

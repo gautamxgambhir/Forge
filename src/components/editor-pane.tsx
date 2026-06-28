@@ -285,10 +285,11 @@ export const EditorPane = ({
 
   return (
     <div
-      className="flex min-h-0 flex-1"
+      className="relative w-full h-full"
       style={{ background: resolvedTheme === "light" ? "#c8c7c0" : "#000000" }}
     >
       <MonacoEditor
+        key={fileName}
         path={fileName}
         language="forge"
         beforeMount={handleBeforeMount}

@@ -93,7 +93,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Message must be between 30 and 3000 characters." }, { status: 400 });
   }
 
-  // 4. Disposable Email Check (Immediate Reject with custom error)
+  // 4. Disposable Email Check (Immediate Reject with helpful message)
   if (isDisposableEmail(emailVal)) {
     // Store in DB as spam first
     await insertSubmission({
@@ -118,7 +118,7 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json(
-      { error: "This email provider is not supported." },
+      { error: "Temporary email addresses aren't supported. Please use your personal email, or contact me directly at ggambhir1919@gmail.com" },
       { status: 400 }
     );
   }
@@ -194,6 +194,14 @@ export async function POST(req: Request) {
     } else {
       console.warn("Resend API key is missing or default. Skipped email notification.");
     }
+
+    return NextResponse.json(
+      { 
+        ok: true, 
+        message: "Thanks for reaching out! I've received your message and will get back to you as soon as possible." 
+      }, 
+      { status: 200 }
+    );
   } else {
     // Decrease reputation for spammer/suspicious user
     const updatedRep = await updateIpReputation(ip, true);
@@ -215,14 +223,15 @@ export async function POST(req: Request) {
         spamScore: detection.score
       });
     }
-  }
 
-  // 8. Return success response (Silent trap for spam)
-  return NextResponse.json(
-    { 
-      ok: true, 
-      message: "Thanks for reaching out! I've received your message and will get back to you as soon as possible." 
-    }, 
-    { status: 200 }
-  );
+    // 8. Return helpful error message for blocked submissions
+    return NextResponse.json(
+      { 
+        error: "Your message couldn't be sent due to spam filters. Please email me directly at ggambhir1919@gmail.com if you'd like to get in touch.",
+        score: detection.score,
+        reasons: detection.reasons.slice(0, 2) // Show first 2 reasons for transparency
+      }, 
+      { status: 400 }
+    );
+  }
 }

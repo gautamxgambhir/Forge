@@ -26,6 +26,8 @@ export interface TopBarProps {
   onMoveLinesUp: () => void;
   onMoveLinesDown: () => void;
   // View
+  viewMode: "code" | "visual" | "split";
+  onViewModeChange: (mode: "code" | "visual" | "split") => void;
   onToggleSidebar: () => void;
   onToggleTerminal: () => void;
   onToggleMinimap: () => void;
@@ -51,6 +53,8 @@ export const TopBar = ({
   sidebarVisible,
   terminalVisible,
   minimapEnabled,
+  viewMode,
+  onViewModeChange,
   isMobile = false,
   onMobileSidebarToggle,
   onNewFile,
@@ -115,6 +119,10 @@ export const TopBar = ({
       items: [
         { type: "check", label: "Explorer", checked: sidebarVisible,  shortcut: "Ctrl+B", onClick: onToggleSidebar },
         { type: "check", label: "Terminal", checked: terminalVisible, shortcut: "Ctrl+`", onClick: onToggleTerminal },
+        { type: "divider" },
+        { type: "check", label: "Code View", checked: viewMode === "code", onClick: () => onViewModeChange("code") },
+        { type: "check", label: "Visual Explorer", checked: viewMode === "visual", onClick: () => onViewModeChange("visual") },
+        { type: "check", label: "Split View", checked: viewMode === "split", onClick: () => onViewModeChange("split") },
         { type: "divider" },
         { type: "check", label: "Minimap",  checked: minimapEnabled,  onClick: onToggleMinimap },
         { type: "divider" },

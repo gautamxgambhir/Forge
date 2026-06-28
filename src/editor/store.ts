@@ -81,8 +81,12 @@ interface ForgeStore {
   // ── Boot ─────────────────────────────────────
   booted: boolean;
 
+  // ── View Mode ─────────────────────────────────
+  viewMode: "code" | "visual" | "split";
+
   // ── File actions ─────────────────────────────
   markBooted:        () => void;
+  setViewMode:       (mode: "code" | "visual" | "split") => void;
   openFile:          (fileId: string) => void;
   openFileByName:    (fileName: string) => boolean;
   readFileByName:    (fileName: string) => string | undefined;
@@ -157,9 +161,13 @@ export const useForgeStore = create<ForgeStore>((set, get) => ({
   // boot
   booted: false,
 
+  // view mode
+  viewMode: "code",
+
   // ── File actions ────────────────────────────
 
   markBooted: () => set({ booted: true }),
+  setViewMode: (mode) => set({ viewMode: mode }),
 
   openFile: (fileId) => {
     if (!get().files.some((f) => f.id === fileId)) return;
